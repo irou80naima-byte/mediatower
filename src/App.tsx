@@ -1241,21 +1241,21 @@ function DesktopOnly() {
 
   const handleOpenProject = async (id: string) => {
     if (!apiAuth.isLoggedIn()) {
-+      // Optionally fetch public project data if needed; for now just open
-+    }
-+    try {
-+      const full = await apiProjects.get(Number(id));
-+      // full contains nodes, edges, etc.
-+      setProjects(prev => {
-+        const updated = prev.map(p => p.id === id ? { ...p, name: full.name, lastModified: full.lastModified, data: { nodes: full.nodes ?? [], edges: full.edges ?? [] } } : p);
-+        return updated;
-+      });
-+    } catch (e) {
-+      console.error('Failed to load project details', e);
-+    }
-+    setCurrentProjectId(id);
-+    setView('editor');
-+  };
+      // Optionally fetch public project data if needed; for now just open
+    }
+    try {
+      const full = await apiProjects.get(Number(id));
+      // full contains nodes, edges, etc.
+      setProjects(prev => {
+        const updated = prev.map(p => p.id === id ? { ...p, name: full.name, lastModified: full.lastModified, data: { nodes: full.nodes ?? [], edges: full.edges ?? [] } } : p);
+        return updated;
+      });
+    } catch (e) {
+      console.error('Failed to load project details', e);
+    }
+    setCurrentProjectId(id);
+    setView('editor');
+  };
 
   const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
