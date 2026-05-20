@@ -26,7 +26,6 @@ services:
     runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
-    plan: free
     envVars:
       - key: VITE_API_BASE
         sync: false          # ← URL الـ Backend بعد رفعه (مثل https://mediatower-api.onrender.com/api/index.php)
