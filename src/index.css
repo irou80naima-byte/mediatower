@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #eeeeee;
+}
+
+.inherited-css {
+  color: #0a0a0a;
+  font-family: var(--font-sans);
+  line-height: 24px;
+}
+
+/* React Flow custom styles to match the screenshots */
+.xyflow {
+  --xy-edge-stroke: #94a3b8;
+  --xy-edge-stroke-selected: #3b82f6;
+  --xy-connectionline-stroke: #3b82f6;
+  --xy-handle-background: #ffffff;
+  --xy-handle-border: #3b82f6;
+  --xy-selection-background: rgba(59, 130, 246, 0.08);
+  --xy-selection-border: #3b82f6;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  border-width: 2px;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2px;
+}
+
+.react-flow__controls {
+  border: none !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  background: white !important;
+}
+
+.react-flow__controls-button {
+  border-bottom: 1px solid #f1f5f9 !important;
+  background: white !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #f8fafc !important;
+}
+
+.react-flow__node {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
