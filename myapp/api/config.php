@@ -4,32 +4,53 @@
 // =============================================
 
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_PORT', (int)(getenv('DB_PORT') ?: 3306));
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
 define('DB_NAME', getenv('DB_NAME') ?: 'myapp_db');
 
-// CORS Headers - السماح للـ React بالتواصل مع الـ API
+// CORS Headers
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// إذا كان طلب OPTIONS (preflight)، أرجع استجابة ناجحة
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
 // =============================================
-// الاتصال بقاعدة البيانات
+// الاتصال بقاعدة البيانات مع SSL (مطلوب لـ Aiven.io)
 // =============================================
 function getDB(): mysqli
 {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if ($conn->connect_error) {
+    $conn = mysqli_init();
+
+    if (!$conn) {
         http_response_code(500);
-        die(json_encode(['error' => 'فشل الاتصال بقاعدة البيانات: ' . $conn->connect_error]));
+        die(json_encode(['error' => 'فشل تهيئة mysqli']));
     }
+
+    // Aiven يشترط SSL — نُفعّله بدون التحقق من شهادة CA
+    mysqli_ssl_set($conn, null, null, null, null, null);
+
+    $connected = mysqli_real_connect(
+        $conn,
+        DB_HOST,
+        DB_USER,
+        DB_PASS,
+        DB_NAME,
+        DB_PORT,
+        null,
+        MYSQLI_CLIENT_SSL
+    );
+
+    if (!$connected) {
+        http_response_code(500);
+        die(json_encode(['error' => 'فشل الاتصال بقاعدة البيانات: ' . mysqli_connect_error()]));
+    }
+
     $conn->set_charset('utf8mb4');
     return $conn;
 }

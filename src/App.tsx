@@ -69,9 +69,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toPng } from 'html-to-image';
-import { cn } from './lib/utils';
-import { generateFlow } from './services/geminiService';
-import Workspace from './components/Workspace';
+import { projects as apiProjects } from './services/apiClient';
+import { auth as apiAuth } from './services/apiClient';
+
 
 export interface Project {
   id: string;
@@ -1194,83 +1194,97 @@ function DesktopOnly() {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load projects from localforage
+  // Load projects from backend API
   React.useEffect(() => {
-    localforage.getItem('flowlite-projects').then((saved: any) => {
-      if (saved && Array.isArray(saved) && saved.length > 0) {
-        setProjects(saved);
-        setIsLoading(false);
-      } else {
-        // Try migrating from localStorage
-        const legacySaved = localStorage.getItem('flowlite-projects');
-        if (legacySaved) {
-          try {
-            const parsed = JSON.parse(legacySaved);
-            if (Array.isArray(parsed)) {
-              setProjects(parsed);
-              localforage.setItem('flowlite-projects', parsed);
-            }
-          } catch (e) {
-            console.error("Failed to parse legacy projects", e);
-          }
-        }
-        setIsLoading(false);
-      }
-    }).catch(e => {
-      console.error("Failed to load projects", e);
+    if (!apiAuth.isLoggedIn()) {
+      // If not logged in, fallback to localforage (optional) or show empty
       setIsLoading(false);
-    });
+      return;
+    }
+    apiProjects.list()
+      .then((data) => {
+        setProjects(data);
+        setIsLoading(false);
+      })
+      .catch((e) => {
+        console.error('Failed to load projects', e);
+        setIsLoading(false);
+      });
   }, []);
 
-  const persistProjects = (list: Project[]) => {
-    // Serialize before saving to avoid DataCloneError in IndexedDB
-    const safe = list.map(p => ({
-      ...p,
-      data: {
-        nodes: serializeNodes(p.data.nodes),
-        edges: serializeEdges(p.data.edges),
-      }
-    }));
-    localforage.setItem('flowlite-projects', safe).catch(e => console.error("Failed to persist projects", e));
+  const persistProjects = (_: any) => {
+    // No-op: persistence handled via API calls in create/save/delete
   };
 
-  const handleCreateProject = () => {
-    const newId = Date.now().toString();
-    const newProject: Project = { 
-      id: newId, 
-      name: `Flow ${projects.length + 1}`, 
-      lastModified: Date.now(), 
-      data: { nodes: [], edges: [] } 
-    };
-    const updated = [newProject, ...projects];
-    setProjects(updated);
-    persistProjects(updated);
-    setCurrentProjectId(newId);
-    setView('editor');
-  };
-
-  const handleOpenProject = (id: string) => {
-    setCurrentProjectId(id);
-    setView('editor');
-  };
-
-  const handleDeleteProject = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this flow?')) {
-      const updated = projects.filter(p => p.id !== id);
+  const handleCreateProject = async () => {
+    if (!apiAuth.isLoggedIn()) {
+      alert('Please log in to create a project');
+      return;
+    }
+    const name = `Flow ${projects.length + 1}`;
+    try {
+      const res = await apiProjects.create(name);
+      const newProject: Project = {
+        id: String(res.id ?? Date.now()),
+        name: res.name ?? name,
+        lastModified: Date.now(),
+        data: { nodes: [], edges: [] }
+      };
+      const updated = [newProject, ...projects];
       setProjects(updated);
-      persistProjects(updated);
+      setCurrentProjectId(newProject.id);
+      setView('editor');
+    } catch (e) {
+      console.error('Failed to create project', e);
     }
   };
 
-  const handleSaveProject = (id: string, name: string, nodes: any[], edges: any[]) => {
-    setProjects(prev => {
-      const updated = prev.map(p => 
-        p.id === id ? { ...p, name, lastModified: Date.now(), data: { nodes, edges } } : p
-      );
-      persistProjects(updated);
-      return updated;
-    });
+  const handleOpenProject = async (id: string) => {
+    if (!apiAuth.isLoggedIn()) {
++      // Optionally fetch public project data if needed; for now just open
++    }
++    try {
++      const full = await apiProjects.get(Number(id));
++      // full contains nodes, edges, etc.
++      setProjects(prev => {
++        const updated = prev.map(p => p.id === id ? { ...p, name: full.name, lastModified: full.lastModified, data: { nodes: full.nodes ?? [], edges: full.edges ?? [] } } : p);
++        return updated;
++      });
++    } catch (e) {
++      console.error('Failed to load project details', e);
++    }
++    setCurrentProjectId(id);
++    setView('editor');
++  };
+
+  const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!apiAuth.isLoggedIn()) {
+      alert('Please log in to delete a project');
+      return;
+    }
+    if (window.confirm('Are you sure you want to delete this flow?')) {
+      try {
+        await apiProjects.delete(Number(id));
+        const updated = projects.filter(p => p.id !== id);
+        setProjects(updated);
+        // No need to persist locally
+      } catch (e) {
+        console.error('Failed to delete project', e);
+      }
+    }
+  };
+
+  const handleSaveProject = async (id: string, name: string, nodes: any[], edges: any[]) => {
+    try {
+      await apiProjects.save(Number(id), name, nodes, edges);
+      setProjects(prev => {
+        const updated = prev.map(p => p.id === id ? { ...p, name, lastModified: Date.now(), data: { nodes, edges } } : p);
+        return updated;
+      });
+    } catch (e) {
+      console.error('Failed to save project', e);
+    }
   };
 
   if (isLoading) {

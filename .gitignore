@@ -7,3 +7,7 @@ coverage/
 .env*
 !.env.example
 *.webm
+*.mp4
+*.png
+*.jpg
+*.jpeg
