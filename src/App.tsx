@@ -71,6 +71,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toPng } from 'html-to-image';
 import { projects as apiProjects } from './services/apiClient';
 import { auth as apiAuth } from './services/apiClient';
+import Workspace from './components/Workspace';
 
 
 export interface Project {
