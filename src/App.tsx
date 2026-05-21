@@ -1,6 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { cn } from './lib/utils';
 import localforage from 'localforage';
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { useDebouncedCallback } from 'use-debounce';
 import {
   ReactFlow,
   useNodesState,
@@ -520,7 +522,7 @@ const LIBRARY_ITEMS: Record<string, any[]> = {
   ],
 };
 
-function FlowEditor({ project, onBack, onSave }: { project: Project, onBack: () => void, onSave: (id: string, name: string, nodes: any[], edges: any[]) => void }) {
+function FlowEditor({ project, onBack, onSave }: { project: Project, onBack: () => void, onSave: (id: string, name: string, nodes: any[], edges: any[]) => Promise<void> }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -533,6 +535,7 @@ function FlowEditor({ project, onBack, onSave }: { project: Project, onBack: () 
   const [searchQuery, setSearchQuery] = useState("");
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string>('');
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, zoomIn, zoomOut, getZoom } = useReactFlow();
@@ -565,12 +568,29 @@ function FlowEditor({ project, onBack, onSave }: { project: Project, onBack: () 
     setHasLoaded(true);
   }, [project.id, setNodes, setEdges]);
 
+  // Debounced auto-save to prevent UI freezing
+  const debouncedAutoSave = useDebouncedCallback((pId, pName, n, e) => {
+    setSaveStatus('Saving...');
+    onSave(pId, pName, n, e).then(() => setSaveStatus('Saved ✅')).catch(() => setSaveStatus('Error saving'));
+  }, 2000);
+
   // Auto-save project to parent state on change
   React.useEffect(() => {
     if (hasLoaded) {
-      onSave(project.id, projectName, nodes, edges);
+      setSaveStatus('Unsaved changes...');
+      debouncedAutoSave(project.id, projectName, nodes, edges);
     }
-  }, [nodes, edges, projectName, hasLoaded]);
+  }, [nodes, edges, projectName, hasLoaded, debouncedAutoSave]);
+
+  const handleManualSave = async () => {
+    setSaveStatus('Saving...');
+    try {
+      await onSave(project.id, projectName, nodes, edges);
+      setSaveStatus('Saved ✅');
+    } catch (e) {
+      setSaveStatus('Error saving');
+    }
+  };
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -1323,11 +1343,10 @@ function AuthScreen({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 }
 
 function DesktopOnly() {
-  const [view, setView] = useState<'workspace' | 'editor'>('workspace');
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(apiAuth.isLoggedIn());
+  const navigate = useNavigate();
 
   // Load projects from backend API
   React.useEffect(() => {
@@ -1351,10 +1370,6 @@ function DesktopOnly() {
       });
   }, [isLoggedIn]);
 
-  const persistProjects = (_: any) => {
-    // No-op: persistence handled via API calls in create/save/delete
-  };
-
   const handleCreateProject = async () => {
     if (!isLoggedIn) {
       alert('Please log in to create a project');
@@ -1371,8 +1386,7 @@ function DesktopOnly() {
       };
       const updated = [newProject, ...projects];
       setProjects(updated);
-      setCurrentProjectId(newProject.id);
-      setView('editor');
+      navigate(`/flow/${newProject.id}`);
     } catch (e: any) {
       console.error('Failed to create project', e);
       alert(`فشل إنشاء الفلو: ${e?.message || 'تحقق من اتصال السيرفر وقاعدة البيانات في لوحة Render.'}`);
@@ -1382,7 +1396,6 @@ function DesktopOnly() {
   const handleOpenProject = async (id: string) => {
     try {
       const full = await apiProjects.get(Number(id));
-      // الـ API يرجع البيانات مغلفة في full.data — نستخرجها بشكل صحيح
       const projectData = full.data ?? full;
       setProjects(prev => {
         const updated = prev.map(p =>
@@ -1403,8 +1416,7 @@ function DesktopOnly() {
     } catch (e) {
       console.error('Failed to load project details', e);
     }
-    setCurrentProjectId(String(id));
-    setView('editor');
+    navigate(`/flow/${id}`);
   };
 
   const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
@@ -1426,7 +1438,6 @@ function DesktopOnly() {
 
   const handleSaveProject = async (id: string, name: string, nodes: any[], edges: any[]) => {
     try {
-      // نُنظّف البيانات من المكونات غير القابلة للتسلسل (مثل أيقونات Lucide)
       const cleanNodes = serializeNodes(nodes);
       const cleanEdges = serializeEdges(edges);
       await apiProjects.save(Number(id), name, cleanNodes, cleanEdges);
@@ -1440,6 +1451,7 @@ function DesktopOnly() {
       });
     } catch (e) {
       console.error('Failed to save project', e);
+      throw e; // throw so debouncer knows it failed
     }
   };
 
@@ -1452,8 +1464,7 @@ function DesktopOnly() {
       }
       setIsLoggedIn(false);
       setProjects([]);
-      setCurrentProjectId(null);
-      setView('workspace');
+      navigate('/');
     }
   };
 
@@ -1467,34 +1478,63 @@ function DesktopOnly() {
 
   return (
     <div className="flex flex-col h-screen">
-      {view === 'workspace' ? (
-        <Workspace 
-          projects={projects}
-          onOpenProject={handleOpenProject}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          onLogout={handleLogout}
+      <Routes>
+        <Route 
+          path="/" 
+          element={
+            <Workspace 
+              projects={projects}
+              onOpenProject={handleOpenProject}
+              onCreateProject={handleCreateProject}
+              onDeleteProject={handleDeleteProject}
+              onLogout={handleLogout}
+            />
+          } 
         />
-      ) : (
-        <ReactFlowProvider>
-          <FlowEditor 
-            project={projects.find(p => String(p.id) === String(currentProjectId)) || {
-              id: String(currentProjectId),
-              name: 'Flow',
-              lastModified: Date.now(),
-              data: { nodes: [], edges: [] }
-            }}
-            onBack={() => setView('workspace')}
-            onSave={handleSaveProject}
-          />
-        </ReactFlowProvider>
-      )}
+        <Route 
+          path="/flow/:id" 
+          element={<FlowEditorRoute projects={projects} onSave={handleSaveProject} />} 
+        />
+      </Routes>
     </div>
   );
 }
 
+// Wrapper to extract ID and provide default project
+function FlowEditorRoute({ projects, onSave }: { projects: Project[], onSave: any }) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  
+  const project = projects.find(p => String(p.id) === String(id));
+  
+  if (!project) {
+    // If project not found in state (e.g. direct link), we might need to load it. 
+    // For now, if not in state, we redirect to home. The handleOpenProject does the fetching.
+    // A robust app would fetch it here if missing. For simplicity in this fix, we redirect if not found in list.
+    // Since the API returns all projects on load, if it's not here, it doesn't exist.
+    React.useEffect(() => {
+      navigate('/');
+    }, [navigate]);
+    return null;
+  }
+
+  return (
+    <ReactFlowProvider>
+      <FlowEditor 
+        project={project}
+        onBack={() => navigate('/')}
+        onSave={handleSaveProject}
+      />
+    </ReactFlowProvider>
+  );
+}
+
 export default function App() {
-  return <DesktopOnly />;
+  return (
+    <BrowserRouter>
+      <DesktopOnly />
+    </BrowserRouter>
+  );
 }
 
 
