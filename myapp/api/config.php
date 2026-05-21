@@ -1,4 +1,9 @@
 <?php
+// Suppress HTML error output — always return JSON
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(0);
+
 // =============================================
 // إعدادات قاعدة البيانات
 // =============================================

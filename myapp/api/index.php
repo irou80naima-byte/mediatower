@@ -1,22 +1,37 @@
 <?php
+// ─── Suppress HTML error output immediately ───────────────────────────────
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(0);
+
+// ─── Global JSON error/exception handlers ─────────────────────────────────
+set_error_handler(function ($severity, $message, $file, $line) {
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Server error: ' . $message]);
+    exit();
+});
+set_exception_handler(function ($e) {
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Exception: ' . $e->getMessage()]);
+    exit();
+});
+
 /**
  * Mediatower PLAN API - نقطة الدخول الرئيسية
- * 
- * المسارات المتاحة:
- *   POST   /api/?route=auth&action=register   → تسجيل حساب جديد
- *   POST   /api/?route=auth&action=login      → تسجيل الدخول
- *   POST   /api/?route=auth&action=logout     → تسجيل الخروج
- *   GET    /api/?route=auth&action=me         → بيانات المستخدم الحالي
- *   
- *   GET    /api/?route=projects               → قائمة المشاريع
- *   GET    /api/?route=projects&id=X          → مشروع واحد
- *   POST   /api/?route=projects               → إنشاء مشروع
- *   PUT    /api/?route=projects&id=X          → تحديث مشروع
- *   DELETE /api/?route=projects&id=X          → حذف مشروع
- *   
- *   GET    /api/?route=settings               → جلب الإعدادات
- *   PUT    /api/?route=settings               → حفظ الإعدادات
  */
+
+// ─── CORS & JSON headers ──────────────────────────────────────────────────
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 $route = $_GET['route'] ?? '';
 
