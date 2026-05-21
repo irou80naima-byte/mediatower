@@ -1372,20 +1372,31 @@ function DesktopOnly() {
       setProjects(updated);
       setCurrentProjectId(newProject.id);
       setView('editor');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to create project', e);
+      alert(`فشل إنشاء الفلو: ${e?.message || 'تحقق من اتصال السيرفر وقاعدة البيانات في لوحة Render.'}`);
     }
   };
 
   const handleOpenProject = async (id: string) => {
-    if (!isLoggedIn) {
-      // Optionally fetch public project data if needed; for now just open
-    }
     try {
       const full = await apiProjects.get(Number(id));
-      // full contains nodes, edges, etc.
+      // الـ API يرجع البيانات مغلفة في full.data — نستخرجها بشكل صحيح
+      const projectData = full.data ?? full;
       setProjects(prev => {
-        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, name: full.name, lastModified: full.lastModified, data: { nodes: full.nodes ?? [], edges: full.edges ?? [] } } : p);
+        const updated = prev.map(p =>
+          String(p.id) === String(id)
+            ? {
+                ...p,
+                name: full.name ?? p.name,
+                lastModified: full.lastModified ?? p.lastModified,
+                data: {
+                  nodes: projectData.nodes ?? [],
+                  edges: projectData.edges ?? []
+                }
+              }
+            : p
+        );
         return updated;
       });
     } catch (e) {
@@ -1414,9 +1425,16 @@ function DesktopOnly() {
 
   const handleSaveProject = async (id: string, name: string, nodes: any[], edges: any[]) => {
     try {
-      await apiProjects.save(Number(id), name, nodes, edges);
+      // نُنظّف البيانات من المكونات غير القابلة للتسلسل (مثل أيقونات Lucide)
+      const cleanNodes = serializeNodes(nodes);
+      const cleanEdges = serializeEdges(edges);
+      await apiProjects.save(Number(id), name, cleanNodes, cleanEdges);
       setProjects(prev => {
-        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, name, lastModified: Date.now(), data: { nodes, edges } } : p);
+        const updated = prev.map(p =>
+          String(p.id) === String(id)
+            ? { ...p, name, lastModified: Date.now(), data: { nodes: cleanNodes, edges: cleanEdges } }
+            : p
+        );
         return updated;
       });
     } catch (e) {

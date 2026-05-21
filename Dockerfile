@@ -18,8 +18,10 @@ RUN echo '<Directory /var/www/html>\n\
 </Directory>' > /etc/apache2/conf-available/myapp.conf \
  && a2enconf myapp
 
-# Create .htaccess for clean routing
+# Create .htaccess for clean routing + pass Authorization header to PHP
 RUN echo 'RewriteEngine On\n\
+CGIPassAuth On\n\
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1\n\
 RewriteCond %{REQUEST_FILENAME} !-f\n\
 RewriteRule ^(.*)$ index.php [QSA,L]' > /var/www/html/api/.htaccess
 

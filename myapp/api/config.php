@@ -105,9 +105,27 @@ function getBody(): array
 
 function requireAuth(): array
 {
-    $headers = getallheaders();
-    $token = $headers['Authorization'] ?? '';
-    $token = str_replace('Bearer ', '', $token);
+    // Apache على Render قد يُجرّد ترويسة Authorization أو يعيد تسميتها
+    // نقرأ التوكن من أكثر من مكان لضمان التوافق
+    $token = '';
+
+    // 1. getallheaders() — الطريقة القياسية
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    foreach ($headers as $key => $val) {
+        if (strtolower($key) === 'authorization') {
+            $token = $val;
+            break;
+        }
+    }
+
+    // 2. بديل عبر $_SERVER — مفيد عند استخدام FastCGI أو mod_rewrite
+    if (empty($token)) {
+        $token = $_SERVER['HTTP_AUTHORIZATION']
+              ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+              ?? '';
+    }
+
+    $token = str_replace('Bearer ', '', trim($token));
 
     if (empty($token)) {
         sendError('مطلوب تسجيل الدخول', 401);
