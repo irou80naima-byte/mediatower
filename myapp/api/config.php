@@ -8,11 +8,31 @@ error_reporting(0);
 // إعدادات قاعدة البيانات
 // =============================================
 
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_PORT', (int)(getenv('DB_PORT') ?: 3306));
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
-define('DB_NAME', getenv('DB_NAME') ?: 'myapp_db');
+$rawHost = getenv('DB_HOST') ?: 'localhost';
+$rawPort = getenv('DB_PORT') ?: 3306;
+$rawUser = getenv('DB_USER') ?: 'root';
+$rawPass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+$rawName = getenv('DB_NAME') ?: 'myapp_db';
+
+// الذكاء الاصطناعي: لو قام المستخدم بلصق رابط الاتصال الكامل (Service URI) بالخطأ في DB_HOST
+if (strpos(trim($rawHost), 'mysql://') === 0) {
+    $parsed = parse_url(trim($rawHost));
+    if ($parsed) {
+        $rawHost = $parsed['host'] ?? $rawHost;
+        $rawPort = $parsed['port'] ?? $rawPort;
+        $rawUser = $parsed['user'] ?? $rawUser;
+        $rawPass = $parsed['pass'] ?? $rawPass;
+        if (isset($parsed['path']) && trim($parsed['path'], '/') !== '') {
+            $rawName = trim($parsed['path'], '/');
+        }
+    }
+}
+
+define('DB_HOST', trim($rawHost));
+define('DB_PORT', (int)trim($rawPort));
+define('DB_USER', trim($rawUser));
+define('DB_PASS', trim($rawPass));
+define('DB_NAME', trim($rawName));
 
 // CORS Headers
 header('Content-Type: application/json; charset=utf-8');
