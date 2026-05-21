@@ -1523,7 +1523,7 @@ function FlowEditorRoute({ projects, onSave }: { projects: Project[], onSave: an
       <FlowEditor 
         project={project}
         onBack={() => navigate('/')}
-        onSave={handleSaveProject}
+        onSave={onSave}
       />
     </ReactFlowProvider>
   );
