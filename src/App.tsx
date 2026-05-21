@@ -1337,7 +1337,11 @@ function DesktopOnly() {
     setIsLoading(true);
     apiProjects.list()
       .then((data) => {
-        setProjects(data);
+        const normalized = (data || []).map((p: any) => ({
+          ...p,
+          id: String(p.id)
+        }));
+        setProjects(normalized);
         setIsLoading(false);
       })
       .catch((e) => {
@@ -1381,13 +1385,13 @@ function DesktopOnly() {
       const full = await apiProjects.get(Number(id));
       // full contains nodes, edges, etc.
       setProjects(prev => {
-        const updated = prev.map(p => p.id === id ? { ...p, name: full.name, lastModified: full.lastModified, data: { nodes: full.nodes ?? [], edges: full.edges ?? [] } } : p);
+        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, name: full.name, lastModified: full.lastModified, data: { nodes: full.nodes ?? [], edges: full.edges ?? [] } } : p);
         return updated;
       });
     } catch (e) {
       console.error('Failed to load project details', e);
     }
-    setCurrentProjectId(id);
+    setCurrentProjectId(String(id));
     setView('editor');
   };
 
@@ -1400,9 +1404,8 @@ function DesktopOnly() {
     if (window.confirm('Are you sure you want to delete this flow?')) {
       try {
         await apiProjects.delete(Number(id));
-        const updated = projects.filter(p => p.id !== id);
+        const updated = projects.filter(p => String(p.id) !== String(id));
         setProjects(updated);
-        // No need to persist locally
       } catch (e) {
         console.error('Failed to delete project', e);
       }
@@ -1413,7 +1416,7 @@ function DesktopOnly() {
     try {
       await apiProjects.save(Number(id), name, nodes, edges);
       setProjects(prev => {
-        const updated = prev.map(p => p.id === id ? { ...p, name, lastModified: Date.now(), data: { nodes, edges } } : p);
+        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, name, lastModified: Date.now(), data: { nodes, edges } } : p);
         return updated;
       });
     } catch (e) {
@@ -1456,7 +1459,12 @@ function DesktopOnly() {
       ) : (
         <ReactFlowProvider>
           <FlowEditor 
-            project={projects.find(p => p.id === currentProjectId)!}
+            project={projects.find(p => String(p.id) === String(currentProjectId)) || {
+              id: String(currentProjectId),
+              name: 'Flow',
+              lastModified: Date.now(),
+              data: { nodes: [], edges: [] }
+            }}
             onBack={() => setView('workspace')}
             onSave={handleSaveProject}
           />
