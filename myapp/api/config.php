@@ -38,9 +38,9 @@ function getDB(): mysqli
     }
 
     // Aiven يشترط SSL — نُفعّله بدون التحقق من شهادة CA
-    mysqli_ssl_set($conn, null, null, null, null, null);
+    @mysqli_ssl_set($conn, null, null, null, null, null);
 
-    $connected = mysqli_real_connect(
+    $connected = @mysqli_real_connect(
         $conn,
         DB_HOST,
         DB_USER,

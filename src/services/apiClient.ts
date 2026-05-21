@@ -23,7 +23,27 @@ async function apiFetch(route: string, options: RequestInit = {}, params: Record
   };
 
   const res = await fetch(url.toString(), { ...options, headers });
-  const data = await res.json();
+  
+  let data: any;
+  const contentType = res.headers.get('content-type') || '';
+  
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch (err) {
+      throw new Error('فشل في قراءة بيانات الاستجابة من الخادم.');
+    }
+  } else {
+    // الاستجابة ليست JSON (ربما صفحة خطأ HTML أو خطأ من السيرفر)
+    const text = await res.text();
+    console.error('Non-JSON response from server:', text);
+    
+    if (text.includes('mysqli_real_connect') || text.includes('database') || text.includes('قاعدة البيانات') || text.includes('Access denied')) {
+      throw new Error('فشل الخادم في الاتصال بقاعدة البيانات. يرجى التحقق من متغيرات البيئة (DB_HOST, DB_USER, DB_PASS, DB_NAME) في لوحة تحكم Render.');
+    }
+    
+    throw new Error(`استجابة غير صالحة من الخادم (Error ${res.status}). قد يكون ذلك بسبب عدم اكتمال عملية البناء (Deployment) للتحديث الأخير على Render أو عطل مؤقت.`);
+  }
 
   if (!data.success && res.status !== 200) {
     throw new Error(data.error || 'حدث خطأ في الطلب');
