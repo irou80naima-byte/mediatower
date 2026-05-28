@@ -1472,6 +1472,14 @@ function DesktopOnly() {
     return <AuthScreen onLoginSuccess={() => setIsLoggedIn(true)} />;
   }
 
+  const handleProjectLoaded = (id: string, name: string, nodes: any[], edges: any[]) => {
+    setProjects(prev => prev.map(p =>
+      String(p.id) === String(id)
+        ? { ...p, name, data: { nodes, edges } }
+        : p
+    ));
+  };
+
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-400">Loading workspace...</div>;
   }
@@ -1493,29 +1501,73 @@ function DesktopOnly() {
         />
         <Route 
           path="/flow/:id" 
-          element={<FlowEditorRoute projects={projects} onSave={handleSaveProject} />} 
+          element={
+            <FlowEditorRoute 
+              projects={projects} 
+              onSave={handleSaveProject} 
+              onProjectLoaded={handleProjectLoaded}
+              isWorkspaceLoading={isLoading}
+            />
+          } 
         />
       </Routes>
     </div>
   );
 }
 
-// Wrapper to extract ID and provide default project
-function FlowEditorRoute({ projects, onSave }: { projects: Project[], onSave: any }) {
+// Wrapper to extract ID, fetch project details if missing on direct access/reload, and provide default project
+function FlowEditorRoute({ 
+  projects, 
+  onSave, 
+  onProjectLoaded, 
+  isWorkspaceLoading 
+}: { 
+  projects: Project[], 
+  onSave: any, 
+  onProjectLoaded: (id: string, name: string, nodes: any[], edges: any[]) => void, 
+  isWorkspaceLoading: boolean 
+}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [isProjectLoading, setIsProjectLoading] = useState(false);
   
   const project = projects.find(p => String(p.id) === String(id));
-  
-  if (!project) {
-    // If project not found in state (e.g. direct link), we might need to load it. 
-    // For now, if not in state, we redirect to home. The handleOpenProject does the fetching.
-    // A robust app would fetch it here if missing. For simplicity in this fix, we redirect if not found in list.
-    // Since the API returns all projects on load, if it's not here, it doesn't exist.
-    React.useEffect(() => {
+
+  React.useEffect(() => {
+    if (isWorkspaceLoading) return;
+    
+    if (!project) {
       navigate('/');
-    }, [navigate]);
-    return null;
+      return;
+    }
+
+    if (!project.data && !isProjectLoading) {
+      setIsProjectLoading(true);
+      apiProjects.get(Number(id))
+        .then((full) => {
+          const projectData = full.data ?? full;
+          onProjectLoaded(
+            String(id),
+            full.name ?? project.name,
+            projectData.nodes ?? [],
+            projectData.edges ?? []
+          );
+          setIsProjectLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error loading project details", err);
+          setIsProjectLoading(false);
+          navigate('/');
+        });
+    }
+  }, [id, project, isProjectLoading, onProjectLoaded, navigate, isWorkspaceLoading]);
+
+  if (isWorkspaceLoading) {
+    return <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-400">Loading workspace...</div>;
+  }
+
+  if (!project || isProjectLoading || !project.data) {
+    return <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-400">Loading flow data...</div>;
   }
 
   return (
