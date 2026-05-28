@@ -69,6 +69,9 @@ import {
   ZoomIn,
   ZoomOut,
   Notebook,
+  Save,
+  Cloud,
+  CloudOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toPng } from 'html-to-image';
@@ -866,6 +869,56 @@ function FlowEditor({ project, onBack, onSave }: { project: Project, onBack: () 
           />
         </div>
         <div className="flex items-center gap-3">
+          {/* Save status indicator */}
+          <div className="flex items-center gap-1.5 text-xs font-medium px-2">
+            {saveStatus === 'Saving...' && (
+              <span className="flex items-center gap-1.5 text-amber-500">
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                جاري الحفظ...
+              </span>
+            )}
+            {saveStatus === 'Saved ✅' && (
+              <span className="flex items-center gap-1.5 text-emerald-500">
+                <Cloud className="w-3.5 h-3.5" />
+                تم الحفظ
+              </span>
+            )}
+            {saveStatus === 'Unsaved changes...' && (
+              <span className="flex items-center gap-1.5 text-gray-400">
+                <CloudOff className="w-3.5 h-3.5" />
+                تغييرات غير محفوظة
+              </span>
+            )}
+            {saveStatus === 'Error saving' && (
+              <span className="flex items-center gap-1.5 text-red-500">
+                <CloudOff className="w-3.5 h-3.5" />
+                خطأ في الحفظ
+              </span>
+            )}
+          </div>
+
+          {/* Manual save button - only show when there are unsaved changes */}
+          {nodes.length > 0 && (
+            <button
+              onClick={handleManualSave}
+              disabled={saveStatus === 'Saving...' || saveStatus === 'Saved ✅'}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all duration-200 active:scale-95",
+                saveStatus === 'Saved ✅'
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default"
+                  : saveStatus === 'Saving...'
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-900 text-white hover:bg-gray-700 shadow-md shadow-gray-200"
+              )}
+            >
+              <Save className="w-4 h-4" />
+              {saveStatus === 'Saving...' ? 'حفظ...' : saveStatus === 'Saved ✅' ? 'محفوظ' : 'حفظ'}
+            </button>
+          )}
+
           <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
             <Monitor className="w-4 h-4" /> Preview
           </button>
