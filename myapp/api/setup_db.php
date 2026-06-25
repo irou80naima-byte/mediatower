@@ -60,17 +60,23 @@ try {
     VALUES ('Admin', 'admin@myapp.com', MD5('admin123'), 'admin');
     ";
 
-    // PDO can execute multiple statements if emulated prepares are on, 
-    // but to be safe we'll split them or use exec. 
-    // PDO::exec executes an SQL statement in a single function call.
-    $pdo->exec($sql);
+    $db = getDB();
+    if ($db->multi_query($sql)) {
+        do {
+            if ($result = $db->store_result()) {
+                $result->free();
+            }
+        } while ($db->more_results() && $db->next_result());
+    } else {
+        throw new Exception("Error executing query: " . $db->error);
+    }
     
     echo "<h2 style='color:green'>✅ تم إنشاء جميع الجداول والمستخدم بنجاح!</h2>";
     echo "<p>يمكنك الآن العودة إلى موقعك وتسجيل الدخول.</p>";
     echo "<p>الإيميل: admin@myapp.com<br>الرقم السري: admin123</p>";
     echo "<a href='/'>العودة للموقع</a>";
 
-} catch (PDOException $e) {
+} catch (Exception $e) {
     echo "<h2 style='color:red'>❌ حدث خطأ أثناء إعداد قاعدة البيانات:</h2>";
     echo "<p>" . $e->getMessage() . "</p>";
 }
