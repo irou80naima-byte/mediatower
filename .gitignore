@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+*.webm
+*.mp4
+*.png
+*.jpg
+*.jpeg
