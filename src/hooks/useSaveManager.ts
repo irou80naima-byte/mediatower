@@ -197,7 +197,7 @@ export function useSaveManager({
           // Use sendBeacon for last-resort save (non-blocking)
           const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost/myapp/api/index.php';
           const token = localStorage.getItem('flowlite_token');
-          const url = new URL(API_BASE);
+          const url = new URL(API_BASE, window.location.origin);
           url.searchParams.set('route', 'projects');
           url.searchParams.set('id', projectId);
           

@@ -40,7 +40,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 // -----------------------------------------------
 async function apiFetch(route: string, options: RequestInit = {}, params: Record<string, string> = {}): Promise<any> {
   const token = localStorage.getItem('flowlite_token');
-  const url = new URL(API_BASE);
+  const url = new URL(API_BASE, window.location.origin);
   url.searchParams.set('route', route);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
