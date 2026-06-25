@@ -23,8 +23,8 @@ FROM php:8.2-apache
 # Enable mod_rewrite + headers mod
 RUN a2enmod rewrite headers
 
-# Install PHP extensions (mysqli for MySQL)
-RUN docker-php-ext-install mysqli
+# Install PHP extensions (mysqli and pdo_mysql for MySQL)
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
 # 1. Copy the built React frontend from Stage 1 into the Apache root
 COPY --from=builder /app/dist/ /var/www/html/
