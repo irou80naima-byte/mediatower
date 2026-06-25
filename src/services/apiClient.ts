@@ -1,5 +1,5 @@
 // =============================================
-// Mediatower PLAN API Client
+// Plan+B API Client
 // يتواصل مع الـ Backend PHP على XAMPP / Coolify
 // =============================================
 // Improvements:

@@ -37,13 +37,11 @@ const Workspace: React.FC<WorkspaceProps> = ({ projects, onOpenProject, onCreate
           <div className="p-6 pb-2">
             <a href="#">
               <div className="flex items-center gap-2 text-gray-900">
-                <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1.5em" width="1.5em" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="18" cy="18" r="3" />
-                  <circle cx="6" cy="6" r="3" />
-                  <path d="M6 21V9a9 9 0 0 0 9 9" />
-                </svg>
+                <div className="w-8 h-8 bg-gradient-to-br from-[#06b6d4] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-sm">
+                  <span className="text-white font-extrabold text-lg leading-none" style={{ fontFamily: 'sans-serif' }}>P</span>
+                </div>
                 <div className="font-bold relative text-xl">
-                  Mediatower PLAN
+                  Plan+B
                   <div className="absolute ml-0.5 -top-px left-full text-xs font-medium text-blue-600">v1.2</div>
                 </div>
               </div>

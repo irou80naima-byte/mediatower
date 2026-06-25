@@ -11,7 +11,7 @@ const rl = readline.createInterface({
 const askQuestion = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 async function main() {
-  console.log('\n=== أداة تهيئة قاعدة بيانات Mediatower PLAN ===\n');
+  console.log('\n=== أداة تهيئة قاعدة بيانات Plan+B ===\n');
   console.log('يرجى إدخال بيانات الاتصال بقاعدة بيانات MySQL التي حصلت عليها من Aiven.io:\n');
 
   const host = await askQuestion('اسم المضيف (Host): ');

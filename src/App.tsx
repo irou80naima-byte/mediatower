@@ -1,5 +1,5 @@
 // =============================================
-// Mediatower PLAN — App Root
+// Plan+B — App Root
 // =============================================
 // This file was restructured from 1646 lines to ~350 lines.
 // All flow editor logic has been moved to dedicated components and hooks.
@@ -52,14 +52,10 @@ function AuthScreen({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8 font-sans">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl border border-gray-200 shadow-xl">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20">
-            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="18" cy="18" r="3" />
-              <circle cx="6" cy="6" r="3" />
-              <path d="M6 21V9a9 9 0 0 0 9 9" />
-            </svg>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#1d4ed8] shadow-lg shadow-blue-500/20">
+            <span className="text-white font-extrabold text-2xl leading-none" style={{ fontFamily: 'sans-serif' }}>P</span>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">Mediatower PLAN</h2>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">Plan+B</h2>
           <p className="mt-2 text-sm text-gray-500">
             {isLogin ? 'تسجيل الدخول للوصول إلى مساحة العمل السحابية الخاصة بك' : 'إنشاء حساب جديد لحفظ وإدارة مشاريعك السحابية'}
           </p>
