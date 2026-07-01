@@ -30,8 +30,6 @@ import {
   Save,
   Cloud,
   CloudOff,
-  ZoomIn,
-  ZoomOut,
   Image as ImageIcon,
   Video,
 } from 'lucide-react';
@@ -43,10 +41,12 @@ import type { Project, LibraryCategory, LibraryItem, SaveStatus } from '../../ty
 import { LIBRARY_ITEMS, findIcon, getYoutubeThumbnail } from '../../constants/libraryItems';
 import { deserializeNodes, generateNodeId } from '../../utils/serialization';
 import { useSaveManager } from '../../hooks/useSaveManager';
+import { compressImage } from '../../utils/imageCompressor';
 import { nodeTypes } from './CustomNode';
 import NodeInspector from './NodeInspector';
 import LibraryPanel from './LibraryPanel';
 import FlowToolbar from './FlowToolbar';
+import ZoomControls from './ZoomControls';
 
 interface FlowEditorProps {
   project: Project;
@@ -68,9 +68,12 @@ export default function FlowEditor({ project, onBack, onSave }: FlowEditorProps)
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
+  // Track how many nodes the project originally had — used by save manager
+  // to block accidental empty-canvas saves during loading.
+  const initialNodeCountRef = useRef(0);
+
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, zoomIn: rfZoomIn, zoomOut: rfZoomOut, getZoom } = useReactFlow();
-  const [zoomLevel, setZoomLevel] = useState(100);
+  const { screenToFlowPosition } = useReactFlow();
 
   // ===== Save Manager Hook =====
   const {
@@ -87,30 +90,39 @@ export default function FlowEditor({ project, onBack, onSave }: FlowEditorProps)
     debounceMs: 2000,
     maxRetries: 3,
     enabled: hasLoaded,
+    initialNodeCount: initialNodeCountRef.current,
   });
 
   // ===== Load project data on mount =====
   useEffect(() => {
+    // Reset save-enabled flag immediately on project change
+    setHasLoaded(false);
+
     if (project.data) {
       const restoredNodes = deserializeNodes(project.data.nodes || []);
+      initialNodeCountRef.current = restoredNodes.length;
       setNodes(restoredNodes);
       setEdges(project.data.edges || []);
       setProjectName(project.name);
     }
-    // Small delay to prevent auto-save from triggering during initial load
-    const timer = setTimeout(() => setHasLoaded(true), 100);
-    return () => clearTimeout(timer);
+
+    // Delay enabling auto-save to let React Flow finish internal processing
+    // (measuring node dimensions, fitView, etc.) before considering changes
+    // as user-initiated modifications.
+    // 500ms is safer than the old 100ms — covers slow devices and large projects.
+    const timer = setTimeout(() => {
+      if (project.data) {
+        setHasLoaded(true);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      setHasLoaded(false);
+    };
   }, [project.id, setNodes, setEdges]);
 
-  // ===== Zoom controls =====
-  const handleZoomIn = () => {
-    rfZoomIn({ duration: 200 });
-    setTimeout(() => setZoomLevel(Math.round(getZoom() * 100)), 220);
-  };
-  const handleZoomOut = () => {
-    rfZoomOut({ duration: 200 });
-    setTimeout(() => setZoomLevel(Math.round(getZoom() * 100)), 220);
-  };
+
 
   // ===== Drag & Drop =====
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -237,24 +249,32 @@ export default function FlowEditor({ project, onBack, onSave }: FlowEditorProps)
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
+      reader.onload = async (e) => {
+        const rawImageUrl = e.target?.result as string;
+        
+        try {
+          // Compress the image client-side before storing/saving it
+          const compressed = await compressImage(rawImageUrl, 1000, 1000, 0.7);
+          
+          // Constrain display dimensions on the canvas to a clean size (max 350px width)
+          const displayWidth = Math.min(compressed.width, 350);
+          const displayHeight = Math.round((compressed.height * displayWidth) / compressed.width);
+
           setNodes((nds) =>
             nds.map((node) => {
               if (node.id === id) {
                 return {
                   ...node,
-                  data: { ...node.data, imageUrl },
-                  style: { ...node.style, width: img.width, height: img.height + 20 },
+                  data: { ...node.data, imageUrl: compressed.imageUrl },
+                  style: { ...node.style, width: displayWidth, height: displayHeight + 20 },
                 };
               }
               return node;
             })
           );
-        };
-        img.src = imageUrl;
+        } catch (err) {
+          console.error('[FlowEditor] Failed to compress uploaded image:', err);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -503,6 +523,8 @@ export default function FlowEditor({ project, onBack, onSave }: FlowEditorProps)
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
+          minZoom={0.1}
+          maxZoom={4}
           zoomActivationKeyCode="Control"
           deleteKeyCode="Delete"
           edgesReconnectable={true}
@@ -569,18 +591,8 @@ export default function FlowEditor({ project, onBack, onSave }: FlowEditorProps)
           </Panel>
 
           {/* Zoom controls */}
-          <Panel position="right" className="mr-4 flex flex-col gap-2 z-[80] top-1/2 -translate-y-1/2 absolute">
-            <div className="flex flex-col items-center bg-white rounded-xl shadow-xl border border-gray-100 p-1">
-              <button onClick={handleZoomIn} className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-95">
-                <ZoomIn className="w-5 h-5" />
-              </button>
-              <div className="w-full h-[1px] bg-gray-100 my-1" />
-              <span className="text-xs font-bold text-gray-500 py-1 w-10 text-center select-none">{zoomLevel}%</span>
-              <div className="w-full h-[1px] bg-gray-100 my-1" />
-              <button onClick={handleZoomOut} className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all active:scale-95">
-                <ZoomOut className="w-5 h-5" />
-              </button>
-            </div>
+          <Panel position="right" className="mr-4 z-[80] top-1/2 -translate-y-1/2 absolute">
+            <ZoomControls />
           </Panel>
 
           {/* AI Generation Toolbar */}

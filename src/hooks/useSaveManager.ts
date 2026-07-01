@@ -10,6 +10,9 @@
 // ✅ beforeunload protection (warns user before leaving with unsaved changes)
 // ✅ Validation before every save
 // ✅ Save versioning (never overwrites newer data with older)
+// ✅ Skip-count guard (skips first N renders after enabling to let React Flow settle)
+// ✅ Empty-canvas protection (blocks saving 0 nodes when project originally had data)
+// ✅ Cleanup: cancels debounced saves on unmount and project change
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
@@ -28,7 +31,8 @@ interface UseSaveManagerOptions {
   onSave: (id: string, name: string, nodes: any[], edges: any[]) => Promise<void>;
   debounceMs?: number;
   maxRetries?: number;
-  enabled?: boolean; // set to false while loading project data
+  enabled?: boolean;          // set to false while loading project data
+  initialNodeCount?: number;  // how many nodes the project originally had — blocks empty-canvas saves
 }
 
 interface UseSaveManagerReturn {
@@ -39,6 +43,10 @@ interface UseSaveManagerReturn {
   validationWarnings: string[];
 }
 
+// Number of renders to skip after `enabled` flips to true.
+// This absorbs React Flow's internal updates (dimension measurement, etc.)
+const SKIP_RENDERS_AFTER_ENABLE = 3;
+
 export function useSaveManager({
   projectId,
   projectName,
@@ -48,6 +56,7 @@ export function useSaveManager({
   debounceMs = 2000,
   maxRetries = 3,
   enabled = true,
+  initialNodeCount = 0,
 }: UseSaveManagerOptions): UseSaveManagerReturn {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -58,6 +67,11 @@ export function useSaveManager({
   const saveVersionRef = useRef(0);         // increments on every change
   const lastSavedVersionRef = useRef(0);    // last version that was successfully saved
   const pendingSaveRef = useRef(false);     // true if a save is waiting for lock release
+
+  // Skip-count guard: replaces the old single-use `isFirstRender` boolean.
+  // Counts how many renders have occurred since `enabled` flipped to true.
+  // Saves are blocked until this counter exceeds SKIP_RENDERS_AFTER_ENABLE.
+  const skipCountRef = useRef(0);
 
   const hasUnsavedChanges = saveStatus === 'unsaved' || saveStatus === 'error';
 
@@ -145,14 +159,27 @@ export function useSaveManager({
   );
 
   // ----- Detect changes and trigger auto-save -----
-  const isFirstRender = useRef(true);
-
   useEffect(() => {
     if (!enabled) return;
 
-    // Skip auto-save on first render (loading phase)
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
+    // Skip the first N renders after enabling.
+    // This lets React Flow finish its internal processing (measuring node
+    // dimensions, etc.) before we start considering state changes as
+    // user-initiated modifications that need saving.
+    if (skipCountRef.current < SKIP_RENDERS_AFTER_ENABLE) {
+      skipCountRef.current += 1;
+      return;
+    }
+
+    // GUARD: Never auto-save an empty canvas when the project originally
+    // contained nodes. This is the last line of defense against data loss
+    // from timing bugs during the load phase.
+    if (nodes.length === 0 && initialNodeCount > 0) {
+      console.warn(
+        '[SaveManager] ⛔ Blocked auto-save of empty canvas — project originally had',
+        initialNodeCount,
+        'nodes'
+      );
       return;
     }
 
@@ -161,16 +188,25 @@ export function useSaveManager({
 
     setSaveStatus('unsaved');
     debouncedSave(projectId, projectName, nodes, edges, currentVersion);
-  }, [nodes, edges, projectName, enabled, projectId, debouncedSave]);
+  }, [nodes, edges, projectName, enabled, projectId, debouncedSave, initialNodeCount]);
 
-  // Reset on project change
+  // ----- Reset on project change -----
   useEffect(() => {
-    isFirstRender.current = true;
+    skipCountRef.current = 0;
     setSaveStatus('idle');
     saveVersionRef.current = 0;
     lastSavedVersionRef.current = 0;
     setValidationWarnings([]);
-  }, [projectId]);
+    // Cancel any pending debounced save from the PREVIOUS project
+    debouncedSave.cancel();
+  }, [projectId, debouncedSave]);
+
+  // ----- Cleanup on unmount — cancel pending saves -----
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 
   // ----- Manual save -----
   const manualSave = useCallback(async () => {
@@ -188,6 +224,11 @@ export function useSaveManager({
   // ----- beforeunload protection -----
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
+      // GUARD: Don't attempt emergency save if:
+      // - Data hasn't finished loading yet (enabled === false)
+      // - Canvas is empty (would overwrite existing data with nothing)
+      if (!enabled || nodes.length === 0) return;
+
       if (hasUnsavedChanges || isSavingRef.current) {
         e.preventDefault();
         // Attempt emergency save
@@ -224,7 +265,7 @@ export function useSaveManager({
 
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [hasUnsavedChanges, nodes, edges, projectId, projectName]);
+  }, [enabled, hasUnsavedChanges, nodes, edges, projectId, projectName]);
 
   return {
     saveStatus,

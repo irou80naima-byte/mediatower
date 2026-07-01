@@ -50,30 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // =============================================
 function getDB(): mysqli
 {
-    $conn = mysqli_init();
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
-    if (!$conn) {
+    if ($conn->connect_error) {
         http_response_code(500);
-        die(json_encode(['error' => 'فشل تهيئة mysqli']));
-    }
-
-    // Aiven يشترط SSL — نُفعّله بدون التحقق من شهادة CA
-    @mysqli_ssl_set($conn, null, null, null, null, null);
-
-    $connected = @mysqli_real_connect(
-        $conn,
-        DB_HOST,
-        DB_USER,
-        DB_PASS,
-        DB_NAME,
-        DB_PORT,
-        null,
-        MYSQLI_CLIENT_SSL
-    );
-
-    if (!$connected) {
-        http_response_code(500);
-        die(json_encode(['error' => 'فشل الاتصال بقاعدة البيانات: ' . mysqli_connect_error()]));
+        die(json_encode(['error' => 'فشل الاتصال بقاعدة البيانات: ' . $conn->connect_error]));
     }
 
     $conn->set_charset('utf8mb4');
