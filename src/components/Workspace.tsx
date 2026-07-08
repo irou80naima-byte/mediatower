@@ -38,7 +38,7 @@ const Workspace: React.FC<WorkspaceProps> = ({ projects, onOpenProject, onCreate
           <div className="p-6 pb-2">
             <a href="#">
               <div className="flex items-center gap-2 text-gray-900">
-                <img src={LOGO_SRC} alt="Plan+B" className="w-8 h-8 object-contain" />
+                <img src={LOGO_SRC} alt="Plan+B" className="w-10 h-10 object-contain" />
                 <div className="font-bold relative text-xl">
                   Plan+B
                   <div className="absolute ml-0.5 -top-px left-full text-xs font-medium text-blue-600">v1.2</div>

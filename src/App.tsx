@@ -53,7 +53,7 @@ function AuthScreen({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8 font-sans">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl border border-gray-200 shadow-xl">
         <div className="text-center">
-          <img src={LOGO_SRC} alt="Plan+B" className="mx-auto h-14 w-14 object-contain" />
+          <img src={LOGO_SRC} alt="Plan+B" className="mx-auto h-20 w-20 object-contain" />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">Plan+B</h2>
           <p className="mt-2 text-sm text-gray-500">
             {isLogin ? 'تسجيل الدخول للوصول إلى مساحة العمل السحابية الخاصة بك' : 'إنشاء حساب جديد لحفظ وإدارة مشاريعك السحابية'}
