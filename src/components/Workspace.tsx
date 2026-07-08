@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../lib/utils';
+import { LOGO_SRC } from '../assets/logo';
 
 interface Project {
   id: string;
@@ -37,9 +38,7 @@ const Workspace: React.FC<WorkspaceProps> = ({ projects, onOpenProject, onCreate
           <div className="p-6 pb-2">
             <a href="#">
               <div className="flex items-center gap-2 text-gray-900">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#06b6d4] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="text-white font-extrabold text-lg leading-none" style={{ fontFamily: 'sans-serif' }}>P</span>
-                </div>
+                <img src={LOGO_SRC} alt="Plan+B" className="w-8 h-8 object-contain" />
                 <div className="font-bold relative text-xl">
                   Plan+B
                   <div className="absolute ml-0.5 -top-px left-full text-xs font-medium text-blue-600">v1.2</div>

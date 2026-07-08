@@ -14,6 +14,7 @@ import { auth as apiAuth } from './services/apiClient';
 import { projects as apiProjects } from './services/apiClient';
 import Workspace from './components/Workspace';
 import FlowEditor from './components/flow/FlowEditor';
+import { LOGO_SRC } from './assets/logo';
 
 // =============================================
 // Auth Screen
@@ -52,9 +53,7 @@ function AuthScreen({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8 font-sans">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl border border-gray-200 shadow-xl">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#1d4ed8] shadow-lg shadow-blue-500/20">
-            <span className="text-white font-extrabold text-2xl leading-none" style={{ fontFamily: 'sans-serif' }}>P</span>
-          </div>
+          <img src={LOGO_SRC} alt="Plan+B" className="mx-auto h-14 w-14 object-contain" />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">Plan+B</h2>
           <p className="mt-2 text-sm text-gray-500">
             {isLogin ? 'تسجيل الدخول للوصول إلى مساحة العمل السحابية الخاصة بك' : 'إنشاء حساب جديد لحفظ وإدارة مشاريعك السحابية'}
